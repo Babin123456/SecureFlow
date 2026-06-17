@@ -1,8 +1,9 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Shield, Lock, Zap, Github, ArrowRight, CheckCircle, Search, Cpu } from 'lucide-react';
+import { Shield, Lock, Github, ArrowRight, CheckCircle, Search, Cpu } from 'lucide-react';
 import Image from 'next/image';
+import LoginButton from '@/components/ui/login-button';
 
 export default function LandingPage() {
   return (
@@ -10,8 +11,14 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="border-b border-white/5 px-6 py-4 flex items-center justify-between glass-card sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-primary">
-            <Shield className="text-background w-5 h-5" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center glow-primary">
+            <Image 
+              src="/logo.jpeg" 
+              alt="SecureFlow Logo" 
+              width={28} 
+              height={28} 
+              className="object-contain"
+            />
           </div>
           <span className="font-headline font-bold text-xl tracking-tight">SecureFlow</span>
         </div>
@@ -20,9 +27,7 @@ export default function LandingPage() {
           <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/dashboard">
-            <Button variant="outline" className="border-primary/20 hover:bg-primary/10">Log In</Button>
-          </Link>
+          <LoginButton />
           <Link href="/dashboard">
             <Button className="bg-primary text-background hover:bg-primary/90 glow-primary">
               <Github className="w-4 h-4 mr-2" />
@@ -143,8 +148,14 @@ export default function LandingPage() {
       <footer className="mt-auto border-t border-white/5 px-6 py-12 bg-background">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-              <Shield className="text-background w-4 h-4" />
+            <div className="w-6 h-6 rounded flex items-center justify-center">
+              <Image 
+                src="/logo.jpeg" 
+                alt="SecureFlow Logo" 
+                width={28} 
+                height={28} 
+                className="object-contain"
+              />
             </div>
             <span className="font-headline font-bold text-lg tracking-tight">SecureFlow</span>
           </div>

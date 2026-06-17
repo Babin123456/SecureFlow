@@ -30,8 +30,14 @@ export function DashboardSidebar() {
   return (
     <aside className="w-64 border-r border-white/5 bg-sidebar min-h-screen p-6 flex flex-col gap-8">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center glow-primary">
-          <ShieldAlert className="text-background w-5 h-5" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center glow-primary">
+          <Image 
+            src="/logo.jpeg" 
+            alt="SecureFlow Logo" 
+            width={28} 
+            height={28} 
+            className="object-contain"
+          />
         </div>
         <span className="font-headline font-bold text-lg tracking-tight">SecureFlow</span>
       </div>
@@ -102,4 +108,5 @@ export function DashboardHeader() {
   );
 }
 
-import { Search } from "lucide-react";
+import { Search } from "lucide-react";import Image from "next/image";
+
