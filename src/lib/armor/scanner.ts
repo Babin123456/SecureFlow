@@ -126,21 +126,21 @@ export class ArmorIQScanner {
         continue;
       }
 
-      // --- NEW: Add File-Specific AI Warnings ---
       let fileContext = "";
       const lowerFile = file.filename.toLowerCase();
       
       if (lowerFile.includes('.env.example') || lowerFile.includes('.env.sample')) {
-        fileContext = " [WARNING: THIS IS A TEMPLATE. ALL SECRETS ARE MOCK PLACEHOLDERS. ONLY FLAG IF YOU SEE A REAL, HIGH-ENTROPY API KEY]";
+        fileContext = "THIS IS A TEMPLATE. SECRETS ARE MOCK PLACEHOLDERS. ONLY FLAG REAL, HIGH-ENTROPY KEYS.";
       } else if (lowerFile.includes('seed.ts')) {
-        fileContext = " [WARNING: THIS IS A SEED FILE FOR DUMMY DATA. PASSWORDS, EMAILS, AND TOKENS HERE ARE MOCK DATA. DO NOT FLAG MOCK CREDENTIALS.]";
+        fileContext = "THIS IS A DATABASE SEED SCRIPT. It contains string descriptions of security policies. DO NOT flag the text inside 'name', 'description', or 'conditions' strings as vulnerabilities.";
       } else if (lowerFile.includes('schema.prisma')) {
-        fileContext = " [WARNING: THIS IS A DATABASE SCHEMA, NOT EXECUTABLE LOGIC. DO NOT FLAG DATA TYPES (like Int) AS VULNERABILITIES.]";
+        fileContext = "THIS IS A DATABASE SCHEMA. It does not execute logic. Do not flag data types (like Int) or relation queries as logic flaws.";
       }
 
       scannedFilesList.push(file.filename);
-      // Delineate each file with distinct boundary text headers and the new context tag
-      combinedContent += `--- START FILE: ${file.filename}${fileContext} ---\n${addedLines}\n--- END FILE: ${file.filename} ---\n\n`;
+      
+      // UPDATE: Use XML tags instead of dashed headers for better 8B model attention
+      combinedContent += `<file name="${file.filename}" context_warning="${fileContext}">\n${addedLines}\n</file>\n\n`;
     }
 
     if (!combinedContent.trim()) {
@@ -151,40 +151,40 @@ export class ArmorIQScanner {
       combinedContent = combinedContent.substring(0, MAX_COMBINED_LENGTH) + "\n\n...[TRUNCATED FOR SIZE]...";
     }
 
-    // --- 1. DYNAMIC POLICY INSTRUCTION GENERATION ---
-    let policyInstructions = `1. Hardcoded secrets (actual active production string values like a valid "sk-proj-..." key or high-entropy credentials).\n2. Contextual leaks (explicitly logging secret variables to the console or exposing them to clients).`;
+    let policyInstructions = `CORE RULES:\n1. Hardcoded secrets (actual active production string values).\n2. Contextual leaks (explicitly logging secret variables to the console or exposing them to clients).`;
 
     if (activePolicies && activePolicies.length > 0) {
-      policyInstructions += `\n\nAdditionally, the user has enabled specific security policies. You MUST ALSO scan for the following:\n`;
+      policyInstructions += `\n\nCUSTOM POLICIES TO ENFORCE:\n`;
       activePolicies.forEach((policy, index) => {
-        policyInstructions += `${index + 3}. ${policy.name}: ${policy.description}\n`;
+        // Only provide the description, don't confuse it with internal policy names or JSON structure
+        policyInstructions += `- Rule ${index + 1}: ${policy.description}\n`;
       });
     } else {
-      policyInstructions += `\n\nCRITICAL: DO NOT focus on or flag general vulnerabilities like SQL injection, XSS, logic flaws, or broad data leaks. ONLY FOCUS ON THE DEFAULT SECRET-RELATED ISSUES ABOVE.`;
+      policyInstructions += `\n\nCRITICAL: DO NOT focus on or flag general vulnerabilities like SQL injection, XSS, or logic flaws. ONLY FOCUS ON THE DEFAULT SECRET-RELATED ISSUES ABOVE.`;
     }
 
-    // --- 2. UPDATED PROMPT ---
     const prompt = `Analyze the following aggregated code changes from a Pull Request for security vulnerabilities.
 Look strictly for the following configured issues:
 
 ${policyInstructions}
 
-The changes are organized under individual file demarcation boundaries labeled '--- START FILE: <filename> ---'. 
-CRITICAL: Carefully track which file the code snippet belongs to and report its exact name in the 'fileLocation' field.
+The changes are organized under individual <file> tags. 
+CRITICAL: Track which file the code snippet belongs to and report its exact name in the 'fileLocation' field.
 
 Aggregated Code Changes:
 ${combinedContent}
 
-Respond strictly with a valid JSON object containing a "findings" property which holds the array of vulnerabilities. If no issues exist, return an empty array under the findings key.
+Respond strictly with a valid JSON object containing a "findings" property. 
 Format:
 {
   "findings": [
     {
+      "reasoning": "Step 1: Explain exactly why this snippet is an executable vulnerability. If it is just a string description, a Prisma schema type, or a safe mock variable, do not flag it.",
       "type": "Secret | Vulnerability | Misconfig",
       "severity": "CRITICAL | HIGH | MEDIUM | LOW",
       "description": "Detailed explanation.",
-      "fileLocation": "The exact path/filename containing this vulnerability",
-      "codeSnippet": "The specific problematic line(s) of code"
+      "fileLocation": "The exact path/filename from the <file> tag",
+      "codeSnippet": "The specific problematic line(s)"
     }
   ]
 }`;
@@ -205,19 +205,12 @@ Format:
               content: `You are an elite application security auditor. Output raw JSON only.
 
 CRITICAL RULES:
-1. ONLY flag actual, executable vulnerabilities in the code structure.
-2. READING or IMPORTING process.env is SAFE. DO NOT flag this.
-3. EXPOSING sensitive data is HARMFUL. You MUST flag:
-   - Logging sensitive variables to the console (e.g., console.log(process.env.SECRET)).
-   - Hardcoding secrets or credentials in the source code.
-   - Any logic that transmits sensitive environment variables to client-side code or external logs.
-4. You MUST return a root JSON object with a "findings" key array. The field "codeSnippet" MUST be returned strictly as a single flat string.
-
-5. ENVIRONMENT & TEMPLATE PLACEHOLDER FILTER RULES:
-   - When scanning environment template files (such as .env.example), you MUST differentiate between mock placeholders and real credentials.
-   - NEVER flag values that contain generic filler text, descriptions, or standard placeholders. 
-   - Explicitly IGNORE values containing words like: "your_", "actual_", "secret_here", "_id_here", "generate_a_random", "localhost", "user:password", "your_webhook_secret", or "-----BEGIN RSA PRIVATE KEY-----\\n...". These are safe templates.
-   - ONLY flag a line if the value contains a specific, high-entropy alphanumeric string (e.g. an actual active production token or key) that was clearly pasted by a developer by mistake.` 
+1. ONLY flag actual, executable vulnerabilities.
+2. Assigning process.env to a variable is safe. HOWEVER, explicitly leaking process.env via console.log() or returning it to the client is a CRITICAL VULNERABILITY. You MUST flag any instance of console.log(process.env...).
+3. SQL INJECTION: You MUST flag any raw SQL queries (e.g., $queryRawUnsafe) that use string interpolation instead of parameterized inputs.
+4. SELF-REFERENTIAL TRAP: You are scanning a security tool. Do NOT flag string literals or text descriptions of security policies (e.g., text inside seed files) as vulnerabilities.
+5. JSON ESCAPING (CRITICAL): You MUST properly escape ALL double quotes (\\") and newlines (\\n) inside the "codeSnippet" and "description" fields. NEVER use unescaped double quotes, and NEVER try to use JavaScript string concatenation (+) inside the JSON structure.
+6. You MUST return a root JSON object with a "findings" key array. The "reasoning" key must come first in each object.` 
             },
             { role: 'user', content: prompt }
           ],
@@ -257,15 +250,16 @@ CRITICAL RULES:
 
         findings = filterFalsePositives(sanitizedFindings);
         success = true;
-        await prisma.$queryRawUnsafe(`SELECT * FROM users WHERE name = Gaurav`);
-        console.log(process.env.GROQ_API_KEY)
       } catch (error: any) {
         if (error.status === 429) {
           const retryAfterHeader = error.headers?.get?.('retry-after') || error.headers?.['retry-after'];
           const waitTime = retryAfterHeader ? parseInt(retryAfterHeader, 10) * 1000 : (4 - retries) * 25000;
           
-          console.warn(`⏳ Rate limit reached on batch call. Waiting ${waitTime / 1000} seconds...`);
+          console.warn(`⏳ Rate limit reached. Waiting ${waitTime / 1000} seconds...`);
           await delay(waitTime);
+          retries--;
+        } else if (error.status === 400 && error.error?.code === 'json_validate_failed') {
+          console.warn(`⚠️ LLM generated invalid JSON. Retrying... (${retries} attempts left)`);
           retries--;
         } else {
           console.error(`❌ Consolidated scan failed completely:`, error);
@@ -276,6 +270,11 @@ CRITICAL RULES:
 
     return findings;
   }
+}
+
+async function vulnerable_test() {
+  await prisma.$queryRawUnsafe(`SELECT * FROM users WHERE name = Gaurav`);
+  console.log(process.env.GROQ_API_KEY)
 }
 
 export const scanner = new ArmorIQScanner();
