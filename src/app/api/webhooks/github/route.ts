@@ -1,14 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { scanner } from '@/lib/armor/scanner';
 import { iq } from '@/lib/armor/iq';
 import { developerReceivesAISecurityExplanations } from '@/ai/flows/developer-receives-ai-security-explanations';
 import { App } from 'octokit';
-import prisma from '@/lib/prisma'; 
+import prisma from '@/lib/prisma';
+
+
+
+
+
+function parseGithubSignature(signatureHeader: string | null): string | null {
+  if (!signatureHeader) return null;
+  const prefix = 'sha256=';
+  return signatureHeader.startsWith(prefix) ? signatureHeader.slice(prefix.length) : null;
+}
+
+
+
+async function verifyGitHubWebhook(req: NextRequest): Promise<any> {
+  const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+  // Signature verification
+
+
+  if (!webhookSecret) {
+    throw new Error('GITHUB_WEBHOOK_SECRET is not set');
+  }
+
+  const signatureHex = parseGithubSignature(req.headers.get('x-hub-signature-256'));
+  if (!signatureHex) {
+    throw new Error('Missing or invalid x-hub-signature-256 header');
+  }
+
+  const bodyBuffer = Buffer.from(await req.arrayBuffer());
+  const digest = createHmac('sha256', webhookSecret).update(bodyBuffer).digest('hex');
+
+  const sigBuf = Buffer.from(signatureHex, 'hex');
+  const digBuf = Buffer.from(digest, 'hex');
+
+  if (sigBuf.length !== digBuf.length || !timingSafeEqual(sigBuf, digBuf)) {
+    const err: any = new Error('Invalid GitHub webhook signature');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  return await req.json();
+}
 
 export async function POST(req: NextRequest) {
+
   try {
-    const payload = await req.json();
+    const payload = await verifyGitHubWebhook(req);
     const event = req.headers.get('x-github-event');
+
 
     // 1. UPDATE: Accept installation events alongside pull requests
     if (!['pull_request', 'installation', 'installation_repositories'].includes(event || '')) {
