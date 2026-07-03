@@ -188,11 +188,16 @@ export async function POST(req: NextRequest) {
       const appClient = new App({ appId, privateKey });
       const octokit = await appClient.getInstallationOctokit(installation.id);
 
-      const { data: pullRequestFiles } = await octokit.rest.pulls.listFiles({
-        owner: repository.owner.login,
-        repo: repository.name,
-        pull_number: pull_request.number,
-      });
+      const pullRequestFiles = await octokit.paginate(
+        octokit.rest.pulls.listFiles,
+        {
+          owner: repository.owner.login,
+          repo: repository.name,
+          pull_number: pull_request.number,
+          per_page: 100,
+        }
+      );
+
 
       const fileChanges = pullRequestFiles
         .filter((file: any) => file.patch && file.status !== 'removed') 
