@@ -13,7 +13,8 @@
     "db:gen": "npx prisma generate",
     "db:migrate": "npx prisma migrate dev",
     "db:push": "npx prisma db push",
-    "db:seed": "npx prisma db seed"
+    "db:seed": "npx prisma db seed",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@armoriq/sdk": "^0.3.8",
