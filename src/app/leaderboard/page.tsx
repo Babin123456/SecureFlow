@@ -27,6 +27,7 @@ export default async function LeaderboardPage() {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-4">
+          <ThemeToggle />
           <Link
             href="/"
             className="hidden sm:inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-primary transition-colors"
@@ -34,7 +35,6 @@ export default async function LeaderboardPage() {
             <ArrowLeft className="w-4 h-4" />
             Home
           </Link>
-          <ThemeToggle />
           <LoginButton />
           <Link href={process.env.GITHUB_APP_URL!}>
             <Button className="bg-primary text-background hover:bg-primary/90 glow-primary rounded-sm font-bold uppercase tracking-wide">
