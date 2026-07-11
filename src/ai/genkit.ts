@@ -35,13 +35,7 @@ export const ai = genkit({
   plugins: [
     openAICompatible({
       name: 'groq',
-      const groqApiKey =
-           process.env.GROQ_API_KEY ??
-           (process.env.NODE_ENV === "test" ? "dummy-key-for-build" : undefined);
-
-      ...
-
-      apiKey: groqApiKey,
+      apiKey: process.env.GROQ_API_KEY || "dummy-key-for-build"
       baseURL: 'https://api.groq.com/openai/v1',
       // Registers GROQ_MODEL as a Genkit model action at startup so it can be
       // referenced below (and from anywhere else in the app) as `groq/<model>`.
