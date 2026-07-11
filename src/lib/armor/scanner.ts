@@ -154,6 +154,36 @@ function shouldIgnore(filename: string, customIgnores: RegExp[] = []): boolean {
   return false;
 }
 
+function decodeOneLayer(input: string): string {
+  let out = decode(input);
+
+  out = out.replace(/[\u200B\u200C\u200D\uFEFF\u00AD\u2060\u180E]/g, "");
+
+  out = out.normalize("NFKC");
+
+  return out;
+}
+
+function sanitizeRecursively(input: string): string {
+  let current = input;
+
+  for (let i = 0; i < MAX_SANITIZE_ITERATIONS; i++) {
+    const next = decodeOneLayer(current);
+
+    if (next.length > MAX_SANITIZED_LENGTH) {
+      return next.slice(0, MAX_SANITIZED_LENGTH);
+    }
+
+    if (next === current) {
+      break;
+    }
+
+    current = next;
+  }
+
+  return current;
+}
+
 /**
  * Extracts only newly added or modified lines from a unified diff patch.
  * This filters out context lines, metadata headers, and deleted lines.
