@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, Info, CheckCircle2, AlertOctagon, Terminal, Cpu } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getSeverityTheme } from "@/lib/severity-theme";
 
 interface FindingsClientProps {
   findings: any[];
@@ -30,7 +31,9 @@ export default function FindingsClient({ findings, stats }: FindingsClientProps)
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="space-y-4">
-            {findings.map((finding) => (
+            {findings.map((finding) => {
+              const theme = getSeverityTheme(finding.severity);
+              return (
               <AccordionItem key={finding.id} value={finding.id} className="border border-white/10 rounded-xl overflow-hidden px-4">
                 <AccordionTrigger className="hover:no-underline py-4">
                   <div className="flex items-center gap-4 w-full text-left">
@@ -43,8 +46,8 @@ export default function FindingsClient({ findings, stats }: FindingsClientProps)
                         ⚠️ Verify manually
                       </Badge>
                     )}
-                    <Badge className={finding.severity === 'CRITICAL' ? 'bg-red-500' : finding.severity === 'HIGH' ? 'bg-orange-500' : 'bg-blue-500'}>
-                      {finding.severity}
+                    <Badge className={theme.badgeClass} title={`Raw severity: ${finding.severity}`}>
+                      {theme.label}
                     </Badge>
                   </div>
                 </AccordionTrigger>
@@ -86,7 +89,8 @@ export default function FindingsClient({ findings, stats }: FindingsClientProps)
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+              );
+            })}
           </Accordion>
         </CardContent>
       </Card>
