@@ -30,9 +30,26 @@ export class ArmorIQPolicyEngine {
     return 'PASS';
   }
 
-  async getRiskTrend(): Promise<number> {
+  async getRiskTrend(filters?: { userId?: string; repositoryId?: string }): Promise<number> {
     try {
+      const where: any = {};
+
+      if (filters) {
+        if (filters.repositoryId) {
+          where.pullRequest = {
+            repositoryId: filters.repositoryId,
+          };
+        } else if (filters.userId) {
+          where.pullRequest = {
+            repository: {
+              userId: filters.userId,
+            },
+          };
+        }
+      }
+
       const aggregation = await prisma.scanResult.aggregate({
+        where,
         _avg: {
           riskScore: true,
         },
