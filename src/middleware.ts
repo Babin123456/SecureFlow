@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import NextAuth from "next-auth";
+import authConfig from "./auth.config";
 import { ratelimit } from "@/lib/ratelimit";
 
-export default auth(async (req) => {
+const { auth } = NextAuth(authConfig);
+
+export default auth(async (req: any) => {
   const { nextUrl } = req;
   const token = req.auth;
 
