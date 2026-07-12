@@ -392,7 +392,7 @@ const handler = withErrorHandler(async function POST(req: NextRequest) {
           }
         });
         
-        return NextResponse.json({ success: false, message: 'Rate limit exceeded, check run updated to failure' }, { status: 429 });
+        return NextResponse.json({ success: false, message: 'Rate limit exceeded, check run updated to failure' }, { status: 202 });
       }
       throw error;
     }
