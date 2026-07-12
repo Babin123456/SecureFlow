@@ -10,6 +10,14 @@ import prisma from '@/lib/prisma';
 import { withErrorHandler, AppError } from '@/lib/middleware/error-handler';
 import { withRateLimit } from '@/lib/middleware/rateLimit';
 
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
 function parseGithubSignature(signatureHeader: string | null): string | null {
   if (!signatureHeader) return null;
   const prefix = 'sha256=';
@@ -195,29 +203,35 @@ const handler = withErrorHandler(async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Awaiting user login via setup URL' });
     }
 
-    // Add all selected repositories to the database atomically
-    await prisma.$transaction([
-      ...(repositories || []).map((repo: any) =>
-        prisma.repository.upsert({
-          where: { githubId: BigInt(repo.id) },
-          update: { isActive: true },
-          create: {
-            githubId: BigInt(repo.id),
-            fullName: repo.full_name,
-            owner: repo.full_name.split('/')[0],
-            userId: account.userId,
-          }
-        })
-      ),
-      prisma.auditLog.create({
-        data: {
-          userId: account.userId,
-          action: 'Repository Added',
-          resource: (repositories || []).map((r: any) => r.full_name).join(', '),
-          metadata: { count: (repositories || []).length, event: 'installation' }
-        }
-      })
-    ]);
+    // Add all selected repositories to the database in chunks of 50 to avoid unscalable transactions
+    const repos = repositories || [];
+    const chunks = chunkArray(repos, 50);
+
+    for (const chunk of chunks) {
+      await prisma.$transaction(
+        chunk.map((repo: any) =>
+          prisma.repository.upsert({
+            where: { githubId: BigInt(repo.id) },
+            update: { isActive: true },
+            create: {
+              githubId: BigInt(repo.id),
+              fullName: repo.full_name,
+              owner: repo.full_name.split('/')[0],
+              userId: account.userId,
+            }
+          })
+        )
+      );
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        userId: account.userId,
+        action: 'Repository Added',
+        resource: repos.map((r: any) => r.full_name).join(', '),
+        metadata: { count: repos.length, event: 'installation' }
+      }
+    });
     console.log(`Successfully installed app and populated ${(repositories || []).length} repositories.`);
 
     return NextResponse.json({ success: true, message: 'Repositories populated' });
@@ -233,28 +247,34 @@ const handler = withErrorHandler(async function POST(req: NextRequest) {
     });
 
     if (account) {
-      await prisma.$transaction([
-        ...(repositories_added || []).map((repo: any) =>
-          prisma.repository.upsert({
-            where: { githubId: BigInt(repo.id) },
-            update: { isActive: true },
-            create: {
-              githubId: BigInt(repo.id),
-              fullName: repo.full_name,
-              owner: repo.full_name.split('/')[0],
-              userId: account.userId,
-            }
-          })
-        ),
-        prisma.auditLog.create({
-          data: {
-            userId: account.userId,
-            action: 'Repository Added',
-            resource: (repositories_added || []).map((r: any) => r.full_name).join(', '),
-            metadata: { count: (repositories_added || []).length, event: 'installation_repositories' }
-          }
-        })
-      ]);
+      const repos = repositories_added || [];
+      const chunks = chunkArray(repos, 50);
+
+      for (const chunk of chunks) {
+        await prisma.$transaction(
+          chunk.map((repo: any) =>
+            prisma.repository.upsert({
+              where: { githubId: BigInt(repo.id) },
+              update: { isActive: true },
+              create: {
+                githubId: BigInt(repo.id),
+                fullName: repo.full_name,
+                owner: repo.full_name.split('/')[0],
+                userId: account.userId,
+              }
+            })
+          )
+        );
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          userId: account.userId,
+          action: 'Repository Added',
+          resource: repos.map((r: any) => r.full_name).join(', '),
+          metadata: { count: repos.length, event: 'installation_repositories' }
+        }
+      });
     }
     return NextResponse.json({ success: true, message: 'New repositories added' });
   }
