@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
-const AdminNavLink = ({
-  href,
-  icon,
-  children,
-}: AdminNavLinkProps) => {
+import { cn } from "@/lib/utils";
 
-export function AdminNavLink({ href, icon: Icon, children }: AdminNavLinkProps) {
+interface AdminNavLinkProps {
+  href: string;
+  icon: LucideIcon;
+  children: React.ReactNode;
+}
+
+export function AdminNavLink({
+  href,
+  icon: Icon,
+  children,
+}: AdminNavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href;
 
@@ -25,7 +30,7 @@ export function AdminNavLink({ href, icon: Icon, children }: AdminNavLinkProps) 
           : "text-muted-foreground hover:bg-white/5 hover:text-white border-l-2 border-transparent"
       )}
     >
-      {icon}
+      <Icon className="h-5 w-5" />
       {children}
     </Link>
   );
