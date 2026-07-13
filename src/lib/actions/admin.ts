@@ -79,31 +79,32 @@ export async function getUsers(): Promise<AdminUserRow[]> {
   }));
 }
 
+
 export interface UserManagementMetrics {
   total: number;
   admins: number;
-  auditors: number;
   standard: number;
   last24h: number;
 }
+
 
 export async function getUserManagementMetrics(): Promise<UserManagementMetrics> {
   await requireAdmin();
 
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [total, admins, auditors, standard, last24h] = await Promise.all([
+  const [total, admins, standard, last24h] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { roles: { some: { role: { name: "ADMIN" } } } } }),
-    prisma.user.count({ where: { roles: { some: { role: { name: "AUDITOR" } } } } }),
     prisma.user.count({ where: { roles: { some: { role: { name: "USER" } } } } }),
     prisma.user.count({ where: { createdAt: { gte: yesterday } } }),
   ]);
 
-  return { total, admins, auditors, standard, last24h };
+  return { total, admins, standard, last24h };
 }
 
-export type RoleName = "ADMIN" | "USER" | "AUDITOR";
+
+export type RoleName = "ADMIN" | "USER";
 
 /**
  * Replaces a user's role set with a single new role.
