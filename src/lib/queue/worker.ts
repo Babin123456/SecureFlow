@@ -7,7 +7,7 @@ import { App } from 'octokit';
 import prisma from '@/lib/prisma';
 
 export const worker = new Worker('github-webhooks', async (job: Job) => {
-  const { payload, deliveryId, event } = job.data;
+  const { payload, event } = job.data;
 
   if (!['pull_request', 'installation', 'installation_repositories'].includes(event || '')) {
     console.log('Event not tracked');
