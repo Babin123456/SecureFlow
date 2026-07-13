@@ -23,7 +23,7 @@ vi.mock('@/ai/genkit', () => ({
       };
     },
   },
-  defaultModel: 'groq/mock-model',
+  defaultModel: 'mock-model',
 }));
 
 vi.mock('dotenv/config', () => ({}));
