@@ -35,10 +35,9 @@ export default async function AdminUsersPage() {
         </div>
       </header>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <MetricsCard title="Total Users" value={metrics.total} />
         <MetricsCard title="Administrators" value={metrics.admins} />
-        <MetricsCard title="Auditors" value={metrics.auditors} />
         <MetricsCard title="New (24h)" value={metrics.last24h} />
       </div>
 
