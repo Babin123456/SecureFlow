@@ -157,4 +157,4 @@ export default async function HeistSharePage({
       imageUrl={imageUrl}
     />
   );
-}
+}
