@@ -5,9 +5,34 @@ import Image from 'next/image';
 import { LoginButton } from '@/components/ui/login-button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
+import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
-export default function LandingPage() {
+export default async function LandingPage() {
+  let prsCount = 45208;
+  let secretsCount = 1842;
+  let reposCount = 948;
+
+  try {
+    const [dbPrs, dbSecrets, dbRepos] = await Promise.all([
+      prisma.pullRequest.count(),
+      prisma.finding.count({
+        where: {
+          type: {
+            in: ['Secret', 'Hardcoded Secret', 'Data Leak', 'Contextual Leak']
+          }
+        }
+      }),
+      prisma.repository.count()
+    ]);
+
+    prsCount = dbPrs;
+    secretsCount = dbSecrets;
+    reposCount = dbRepos;
+  } catch (error) {
+    console.error("Failed to fetch landing page stats from database:", error);
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Navigation */}
@@ -77,7 +102,6 @@ export default function LandingPage() {
                variant="ghost"
                className="h-14 px-8 text-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 hover:scale-105 transition-all duration-300 cursor-pointer"
 >              View Documentation
-
               </Button>
             </Link>
           </div>
@@ -85,8 +109,13 @@ export default function LandingPage() {
 
         {/* Hero Interactive Terminal & Counters */}
         <div className="max-w-5xl mx-auto px-2 sm:px-4 relative z-10">
-          <InteractiveDemo />
+          <InteractiveDemo
+            prsCount={prsCount}
+            secretsCount={secretsCount}
+            reposCount={reposCount}
+          />
         </div>
+
 
         <div className="flex justify-center mt-12 animate-bounce">
           <a

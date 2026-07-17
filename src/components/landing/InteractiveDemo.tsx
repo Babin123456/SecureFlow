@@ -25,7 +25,19 @@ const TERMINAL_STEPS: TerminalStep[] = [
   { text: "🔄 Awaiting security resolution to clear gates...", type: "info", delay: 2000 },
 ];
 
-export default function InteractiveDemo() {
+interface InteractiveDemoProps {
+  prsCount?: number;
+  secretsCount?: number;
+  scanAverage?: number;
+  reposCount?: number;
+}
+
+export default function InteractiveDemo({
+  prsCount = 45208,
+  secretsCount = 1842,
+  scanAverage = 1.4,
+  reposCount = 948,
+}: InteractiveDemoProps) {
   const [terminalLines, setTerminalLines] = useState<TerminalStep[]>([]);
   const [stepIndex, setStepIndex] = useState(0);
   const [isResetting, setIsResetting] = useState(false);
@@ -60,7 +72,7 @@ export default function InteractiveDemo() {
           <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase mb-2">PRs Protected</p>
           <h4 className="text-4xl font-extrabold text-foreground font-headline tracking-tight">
-            <CountUp end={45208} duration={3} separator="," enableScrollSpy scrollSpyOnce />
+            <CountUp end={prsCount} duration={3} separator="," enableScrollSpy scrollSpyOnce />
           </h4>
         </div>
 
@@ -68,7 +80,7 @@ export default function InteractiveDemo() {
           <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase mb-2">Secrets Blocked</p>
           <h4 className="text-4xl font-extrabold text-primary font-headline tracking-tight">
-            <CountUp end={1842} duration={2.5} separator="," enableScrollSpy scrollSpyOnce />
+            <CountUp end={secretsCount} duration={2.5} separator="," enableScrollSpy scrollSpyOnce />
           </h4>
         </div>
 
@@ -76,7 +88,7 @@ export default function InteractiveDemo() {
           <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase mb-2">Scan Average</p>
           <h4 className="text-4xl font-extrabold text-foreground font-headline tracking-tight">
-            <CountUp end={1.4} decimals={1} duration={2} suffix="s" enableScrollSpy scrollSpyOnce />
+            <CountUp end={scanAverage} decimals={1} duration={2} suffix="s" enableScrollSpy scrollSpyOnce />
           </h4>
         </div>
 
@@ -84,10 +96,11 @@ export default function InteractiveDemo() {
           <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase mb-2">Protected Repos</p>
           <h4 className="text-4xl font-extrabold text-foreground font-headline tracking-tight">
-            <CountUp end={948} duration={2} separator="," enableScrollSpy scrollSpyOnce />
+            <CountUp end={reposCount} duration={2} separator="," enableScrollSpy scrollSpyOnce />
           </h4>
         </div>
       </div>
+
 
       {/* Terminal Mockup Panel */}
       <div className="relative rounded-xl border border-white/10 overflow-hidden glass-card shadow-2xl max-w-4xl mx-auto">
