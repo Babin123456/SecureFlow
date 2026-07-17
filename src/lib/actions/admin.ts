@@ -57,28 +57,85 @@ export interface AdminUserRow {
 }
 
 export async function getUsers(): Promise<AdminUserRow[]> {
-  await requireAdmin();
-
-  const users = await prisma.user.findMany({
-    include: {
-      roles: { include: { role: true } },
-      _count: { select: { repositories: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return users.map((u) => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    codename: u.codename,
-    image: u.image,
-    roles: u.roles.map((r) => r.role.name),
-    repoCount: u._count.repositories,
-    createdAt: u.createdAt,
-  }));
+  const result = await getUsersPage({ page: 1, pageSize: 10_000 });
+  return result.users;
 }
 
+export interface UsersResult {
+  users: AdminUserRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface UsersQuery {
+  search?: string;
+  role?: "ADMIN" | "USER" | "ALL";
+  page?: number;
+  pageSize?: number;
+}
+
+export async function getUsersPage(query: UsersQuery = {}): Promise<UsersResult> {
+  await requireAdmin();
+
+  const page = Math.max(1, query.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, query.pageSize ?? 25));
+
+  const { search, role } = query;
+
+  const where: any = {};
+
+  if (search) {
+    const q = search.trim();
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { codename: { contains: q, mode: "insensitive" } },
+      ];
+    }
+  }
+
+  if (role && role !== "ALL") {
+    where.roles = {
+      some: {
+        role: { name: role },
+      },
+    };
+  }
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      include: {
+        roles: { include: { role: true } },
+        _count: { select: { repositories: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    users: users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      codename: u.codename,
+      image: u.image,
+      roles: u.roles.map((r) => r.role.name),
+      repoCount: u._count.repositories,
+      createdAt: u.createdAt,
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize) || 1,
+  };
+}
 
 export interface UserManagementMetrics {
   total: number;
@@ -86,7 +143,6 @@ export interface UserManagementMetrics {
   standard: number;
   last24h: number;
 }
-
 
 export async function getUserManagementMetrics(): Promise<UserManagementMetrics> {
   await requireAdmin();
@@ -102,7 +158,6 @@ export async function getUserManagementMetrics(): Promise<UserManagementMetrics>
 
   return { total, admins, standard, last24h };
 }
-
 
 export type RoleName = "ADMIN" | "USER";
 
@@ -302,7 +357,7 @@ export async function getAuditLogs(query: AuditLogQuery = {}): Promise<AuditLogR
   return {
     logs: logs.map((l) => ({
       ...l,
-      actor: l.userId ? (userMap.get(l.userId) as AuditLogActor) ?? null : null,
+      actor: l.userId ? ((userMap.get(l.userId) as AuditLogActor) ?? null) : null,
     })),
     total,
     page,
