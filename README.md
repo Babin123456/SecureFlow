@@ -42,6 +42,7 @@
 - [📝 Available Scripts](#-available-scripts)
 - [🔒 Defense Strategy (Security Policies)](#-defense-strategy-security-policies)
 - [📊 Architecture](#-architecture)
+- [📖 Technical Documentation](#-technical-documentation)
 - [🤝 Contributing](#-contributing)
 - [❓ FAQ](#-faq)
 - [📄 License](#-license)
@@ -141,6 +142,12 @@ Everything visible on the SecureFlow Mission Control Dashboard
 
 ```
 secureflow/
+├── docs/
+│   ├── api.md                   # API route endpoints and specifications
+│   ├── blueprint.md             # Brand, style guidelines, and terminology dictionary
+│   └── security/
+│       └── prompt-injection.md  # Security controls and defenses for LLM prompt injections
+│
 ├── prisma/
 │   ├── migrations/              # Database migration history
 │   ├── schema.prisma            # Database schema (User, Repo, PR, Finding, etc.)
@@ -374,6 +381,16 @@ The architecture follows a modern Next.js full-stack approach with real-time Git
 - **AI Layer**: Groq SDK processes code diffs through Llama 3.1 model — The Professor's brain
 - **Database**: PostgreSQL with Prisma ORM for data persistence — the Vault Logs
 - **GitHub Integration**: Octokit manages webhooks, PR comments, and checks
+
+---
+
+## 📖 Technical Documentation
+
+For more in-depth details about the architecture, developer API, and security practices of SecureFlow, check out:
+
+- **[System Blueprint](./docs/blueprint.md)**: Explains the application blueprint, core capabilities, style guidelines, visual tokens, and heist-themed copywriting dictionary.
+- **[API Reference](./docs/api.md)**: Provides exhaustive details on HTTP endpoints, authentication, rate limits, error formats, and system types.
+- **[AI Security & Prompt Injection Defense](./docs/security/prompt-injection.md)**: Documents the threat vector, policy isolation boundaries, pre-filtering layers, and UI indicators used to protect against LLM prompt injection attacks.
 
 ---
 

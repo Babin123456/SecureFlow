@@ -48,10 +48,10 @@ test.describe('Admin Panel', () => {
     await page.goto('/admin/queue');
 
     await expect(page.getByRole('heading', { name: 'Queue Monitor' })).toBeVisible();
-    await expect(page.getByText('Waiting')).toBeVisible();
-    await expect(page.getByText('Active')).toBeVisible();
-    await expect(page.getByText('Completed')).toBeVisible();
-    await expect(page.getByText('Failed (DLQ)')).toBeVisible();
-    await expect(page.getByText('Delayed')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Waiting' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Active' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Completed' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Failed (DLQ)' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Delayed' })).toBeVisible();
   });
 });
