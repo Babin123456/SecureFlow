@@ -343,7 +343,7 @@ export function HeistTransmission({
               SecureFlow // Heist Audit
             </div>
             <div className="flex items-center gap-1.5 font-mono text-[10px] sm:text-xs tracking-widest uppercase text-red-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse motion-reduce:animate-none" />
               {aiLoading ? "Receiving" : "Live"}
             </div>
           </div>
@@ -402,7 +402,7 @@ export function HeistTransmission({
                   />
                   {isActive && (
                     <span
-                      className="terminal-blink mt-1 inline-block h-4 w-2 shrink-0 bg-red-500 sm:h-5"
+                      className="terminal-blink mt-1 inline-block h-4 w-2 shrink-0 bg-red-500 sm:h-5 motion-reduce:animate-none"
                       aria-hidden
                     />
                   )}
@@ -413,7 +413,7 @@ export function HeistTransmission({
             {/* Idle cursor once the channel goes quiet ─────────────────── */}
             {transmissionComplete && !reducedMotion && (
               <div className="mt-3 flex items-center gap-2 text-red-500/80">
-                <span className="terminal-blink">_</span>
+                <span className="terminal-blink motion-reduce:animate-none">_</span>
                 <span className="text-xs uppercase tracking-widest">channel idle</span>
               </div>
             )}
@@ -423,7 +423,7 @@ export function HeistTransmission({
           <div
             className={cn(
               "relative z-10 border-t border-red-900/50 bg-black p-5 sm:p-7",
-              "transition-all duration-700",
+              "transition-all duration-700 motion-reduce:transition-none",
               transmissionComplete
                 ? "translate-y-0 opacity-100"
                 : "pointer-events-none translate-y-4 opacity-0",
