@@ -28,7 +28,7 @@
   "dependencies": {
     "@armoriq/sdk": "^0.6.3",
     "@auth/prisma-adapter": "^2.11.3",
-    "@genkit-ai/compat-oai": "^1.40.0",
+    "@genkit-ai/compat-oai": "^1.40.1",
     "@hookform/resolvers": "^5.4.0",
     "@octokit/plugin-throttling": "^11.0.3",
     "@prisma/adapter-pg": "^7.9.0",
@@ -94,7 +94,7 @@
     "@types/react-dom": "^19.2.1",
     "eslint": "^10.7.0",
     "eslint-config-next": "^16.2.11",
-    "genkit-cli": "^1.40.0",
+    "genkit-cli": "^1.40.1",
     "husky": "^9.1.7",
     "postcss": "^8",
     "prisma": "^7.9.0",
