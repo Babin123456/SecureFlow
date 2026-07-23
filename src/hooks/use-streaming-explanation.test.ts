@@ -28,17 +28,11 @@ vi.mock('react', () => ({
   },
 }));
 
-// Mock useToast to avoid complex dependencies
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({
-    toast: vi.fn(),
-    dismiss: vi.fn(),
-  }),
-}));
+const mockToast = vi.fn();
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
-    toast: vi.fn(),
+    toast: mockToast,
     dismiss: vi.fn(),
     toasts: [],
   }),
@@ -67,6 +61,7 @@ describe('useStreamingExplanation', () => {
 
   beforeEach(() => {
     fetchMock = vi.fn();
+    mockToast.mockClear();
     (globalThis as any).fetch = fetchMock;
   });
 
@@ -117,24 +112,39 @@ describe('useStreamingExplanation', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  it('sets an error message on a 401 response', async () => {
+  it('sets an error message and triggers toast on a 401 response', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 401 }));
 
     const { useStreamingExplanation } = await import('./use-streaming-explanation');
     const hook = useStreamingExplanation('finding-3');
-    // Should not throw.
-    await expect(hook.start()).resolves.toBeUndefined();
+    await hook.start();
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Explanation Stream Failed',
+        description: 'Session expired - refresh and try again.',
+      })
+    );
   });
 
-  it('sets an error message on a non-ok response', async () => {
+  it('sets an error message and triggers toast on a non-ok response', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
 
     const { useStreamingExplanation } = await import('./use-streaming-explanation');
     const hook = useStreamingExplanation('finding-4');
-    await expect(hook.start()).resolves.toBeUndefined();
+    await hook.start();
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Explanation Stream Failed',
+        description: 'Analysis request failed (503).',
+      })
+    );
   });
 
-  it('handles an error event from the SSE stream', async () => {
+  it('handles an error event from the SSE stream and triggers toast', async () => {
     const body = makeSSEStream([
       sseBlock({ type: 'error', message: 'AI failed' }),
     ]);
@@ -145,25 +155,60 @@ describe('useStreamingExplanation', () => {
     await hook.start();
 
     expect(fetchMock).toHaveBeenCalledOnce();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Explanation Stream Failed',
+        description: 'AI failed',
+      })
+    );
   });
 
-  it('does not surface an AbortError as a user-facing error', async () => {
+  it('handles an interrupted stream (connection closed before done) and triggers toast', async () => {
+    const body = makeSSEStream([
+      sseBlock({ type: 'chunk', explanation: 'Partial explanation text...' }),
+    ]);
+    fetchMock.mockResolvedValue(new Response(body, { status: 200 }));
+
+    const { useStreamingExplanation } = await import('./use-streaming-explanation');
+    const hook = useStreamingExplanation('finding-interrupted');
+    await hook.start();
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Explanation Stream Interrupted',
+        description: 'The connection to the AI service was lost mid-stream. Please try again.',
+      })
+    );
+  });
+
+  it('does not surface an AbortError as a user-facing error or toast', async () => {
     fetchMock.mockRejectedValue(
       Object.assign(new DOMException('Aborted', 'AbortError'))
     );
 
     const { useStreamingExplanation } = await import('./use-streaming-explanation');
     const hook = useStreamingExplanation('finding-6');
-    // Must resolve without throwing.
-    await expect(hook.start()).resolves.toBeUndefined();
+    await hook.start();
+
+    expect(mockToast).not.toHaveBeenCalled();
   });
 
-  it('surfaces non-abort fetch errors as an error state', async () => {
+  it('surfaces non-abort fetch errors as an error state and triggers toast', async () => {
     fetchMock.mockRejectedValue(new Error('Network failure'));
 
     const { useStreamingExplanation } = await import('./use-streaming-explanation');
     const hook = useStreamingExplanation('finding-7');
-    await expect(hook.start()).resolves.toBeUndefined();
+    await hook.start();
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'destructive',
+        title: 'Explanation Stream Error',
+        description: 'Failed to receive security explanation: Network failure',
+      })
+    );
   });
 
   it('calls stop() which aborts the in-flight request', async () => {
