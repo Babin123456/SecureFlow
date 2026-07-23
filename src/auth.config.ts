@@ -20,14 +20,14 @@ export default {
     maxAge: 365 * 24 * 60 * 60, // 1 year access token
   },
   pages: {
-    signIn: '/login', // Tells NextAuth to route users here for login
+    signIn: '/login',
   },
   callbacks: {
     async jwt({ token, account, user }: any) {
       // Initial sign in
       if (account && user) {
         return {
-          ...token, // Preserves the roles and codename fetched from the database in auth.ts
+          ...token,
           accessToken: account.access_token,
           refreshToken: account.refresh_token,
           accessTokenExpires: account.expires_at ? account.expires_at * 1000 : 0,
@@ -66,22 +66,29 @@ export default {
           ...token,
           accessToken: refreshedTokens.access_token,
           accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
-          refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
+          refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
         };
       } catch (error) {
+        console.error("Token refresh failed:", error);
         return { ...token, error: "RefreshAccessTokenError" };
       }
     },
     async session({ session, token }: any) {
-      if (session?.user) {
-        session.user.id = token.userId;
-        (session.user as any).codename = token.codename;
+      // ⭐ Ensure session exists
+      if (!session) {
+        return session;
+      }
+      
+      // ⭐ Check both session.user AND token before destructuring
+      if (session?.user && token) {
+        session.user.id = token.userId || "";
+        (session.user as any).codename = token.codename || "";
         (session.user as any).roles = token.roles || [];
       }
       return {
         ...session,
-        accessToken: token.accessToken,
-        error: token.error,
+        accessToken: token?.accessToken,
+        error: token?.error,
       };
     },
   },
