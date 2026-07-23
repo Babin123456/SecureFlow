@@ -56,7 +56,7 @@ export default function StreamingExplanation({ findingId, storedExplanation }: S
             title="Retry the AI analysis and explanation stream"
           >
             <RadioTower className="w-3.5 h-3.5" />
-            Retry Analysis
+            Retry Explanation
           </button>
         </div>
       )}
