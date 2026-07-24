@@ -126,6 +126,16 @@ function PodiumCard({ entry, isHero }: { entry: ContributorRow; isHero: boolean 
 export default function LeaderboardClient({ contributors }: { contributors: ContributorRow[] }) {
   const [entries, setEntries] = useState<ContributorRow[]>(contributors);
   const [isLive, setIsLive] = useState<boolean>(true);
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+    setLastUpdated(new Date());
+  }, []);
+
+  const formattedTime = mounted && lastUpdated ? lastUpdated.toLocaleTimeString() : "";
 
   useEffect(() => {
     let es: EventSource | null = null;
@@ -141,6 +151,7 @@ export default function LeaderboardClient({ contributors }: { contributors: Cont
             if (Array.isArray(data.contributors)) {
               setEntries(data.contributors);
               setIsLive(true);
+              setLastUpdated(new Date());
             }
           }
         } catch {
@@ -163,6 +174,7 @@ export default function LeaderboardClient({ contributors }: { contributors: Cont
             if (Array.isArray(data.contributors)) {
               setEntries(data.contributors);
               setIsLive(true);
+              setLastUpdated(new Date());
             }
           } catch {
             // Ignore parse errors
@@ -211,7 +223,7 @@ export default function LeaderboardClient({ contributors }: { contributors: Cont
             <span className="block text-primary">Leaderboard</span>
           </h1>
         </div>
-        {/* Status indicator + Legend */}
+        {/* Status indicator + Last Updated + Legend */}
         <div className="flex flex-wrap items-center gap-3 self-start">
           <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2.5">
             <span className={`h-2 w-2 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
@@ -219,6 +231,12 @@ export default function LeaderboardClient({ contributors }: { contributors: Cont
               {isLive ? "Live Updates" : "Polling"}
             </span>
           </div>
+          {formattedTime && (
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 font-mono text-xs text-muted-foreground">
+              <span>Last Updated:</span>
+              <span className="font-semibold text-foreground">{formattedTime}</span>
+            </div>
+          )}
           <div className="inline-flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-2.5">
             <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" />
             <span className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">
