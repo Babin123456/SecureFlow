@@ -59,6 +59,10 @@ export async function* streamDeveloperSecurityExplanations(
       system: SYSTEM_PROMPT,
       prompt,
       output: { format: 'json', schema: StreamChunkSchema },
+      config: {
+        maxOutputTokens: 3000,
+        temperature: 0.1,
+      }
     });
 
     let lastExplanation = '';
@@ -72,9 +76,21 @@ export async function* streamDeveloperSecurityExplanations(
 
     const finalResponse = await response;
     let parsedContent: { explanation?: string; remediationSuggestions?: unknown };
+    
     try {
-      parsedContent = JSON.parse(finalResponse.text);
-    } catch {
+      const withoutThoughts = finalResponse.text.replace(/<think>[\s\S]*?(<\/think>|$)/ig, '');
+      const jsonMatch = withoutThoughts.match(/[\{\[][\s\S]*[\}\]]/);
+      
+      if (!jsonMatch) {
+        throw new Error("No JSON object found in response");
+      }
+
+      parsedContent = JSON.parse(jsonMatch[0]);
+    } catch (error) {
+      console.error("Failed to parse stream explanation JSON:", error);
+      // ADD THIS DEBUG LOG
+      console.error("RAW STREAM OUTPUT WAS:\n", finalResponse.text);
+
       parsedContent = {
         explanation: 'Signal lost. The Professor is recalculating.',
         remediationSuggestions: 'Adjust the plan: lock down the perimeter manually and review the intercepted payload.',
