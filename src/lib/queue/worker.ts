@@ -202,9 +202,31 @@ export const worker = new Worker('github-webhooks', async (job: Job) => {
     } else {
       console.log(`Processing PR #${pull_request.number} on ${repository.full_name}`);
 
-      const dbRepo = await prisma.repository.findUnique({
+      let dbRepo = await prisma.repository.findUnique({
         where: { githubId: BigInt(repository.id) }
       });
+
+      // FIX: Lazy-link the repository if it was missed during the initial installation
+      if (!dbRepo) {
+        const senderId = payload.sender?.id?.toString();
+        const account = await prisma.account.findFirst({
+          where: { provider: 'github', providerAccountId: senderId },
+        });
+
+        if (account) {
+          dbRepo = await prisma.repository.create({
+            data: {
+              githubId: BigInt(repository.id),
+              fullName: repository.full_name,
+              owner: repository.owner.login,
+              userId: account.userId,
+              isActive: true
+            }
+          });
+          console.log(`[Worker] Lazy-linked missing repository ${repository.full_name} to user ${account.userId}`);
+        }
+      }
+      
       const userId = dbRepo?.userId;
 
       let activePolicies: any[] = [];
