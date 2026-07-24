@@ -226,7 +226,7 @@ export const worker = new Worker('github-webhooks', async (job: Job) => {
           console.log(`[Worker] Lazy-linked missing repository ${repository.full_name} to user ${account.userId}`);
         }
       }
-      
+
       const userId = dbRepo?.userId;
 
       let activePolicies: any[] = [];
@@ -308,6 +308,7 @@ export const worker = new Worker('github-webhooks', async (job: Job) => {
         // Ignored if file does not exist
       }
 
+      console.log(`[DEBUG] Passing ${activePolicies.length} active policies to scanner.`);
       const findings = await scanner.scanPullRequest(
         fileChanges,
         activePolicies,

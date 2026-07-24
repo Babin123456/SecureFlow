@@ -68,14 +68,12 @@ describe('maskSecrets', () => {
   });
 });
 
-// ─── extractAddedLines ───────────────────────────────────────────────────────
-
 describe('extractAddedLines', () => {
   it('returns empty string for empty input', () => {
     expect(extractAddedLines('')).toBe('');
   });
 
-  it('extracts lines starting with + and tags them [ADDED]', () => {
+  it('extracts lines starting with + and tags them with line numbers', () => {
     const patch = [
       '--- a/src/db.ts',
       '+++ b/src/db.ts',
@@ -88,9 +86,9 @@ describe('extractAddedLines', () => {
     ].join('\n');
 
     const result = extractAddedLines(patch);
-    expect(result).toContain('[ADDED] const z = 3;');
-    expect(result).toContain('[ADDED] const secret = "sk-live-abc";');
-    expect(result).toContain('const x = 1;');
+    expect(result).toContain('3: const z = 3;');
+    expect(result).toContain('4: const secret = "sk-live-abc";');
+    expect(result).toContain('1: const x = 1;');
   });
 
   it('filters out ---, +++, and @@ header lines', () => {
@@ -105,18 +103,18 @@ describe('extractAddedLines', () => {
     expect(result).not.toContain('---');
     expect(result).not.toContain('+++');
     expect(result).not.toContain('@@');
-    expect(result).toContain('[ADDED] new line');
+    expect(result).toContain('1: new line');
   });
 
-  it('preserves context lines without [ADDED] tag', () => {
+  it('preserves context lines with line numbers', () => {
     const patch = [
       ' unchanged',
       '+added',
     ].join('\n');
 
     const result = extractAddedLines(patch);
-    expect(result).toContain('unchanged');
-    expect(result).toContain('[ADDED] added');
+    expect(result).toContain('0: unchanged');
+    expect(result).toContain('1: added');
   });
 });
 

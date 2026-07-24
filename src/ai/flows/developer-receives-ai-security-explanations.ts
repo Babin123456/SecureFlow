@@ -31,13 +31,27 @@ export async function developerReceivesAISecurityExplanations(
     model: defaultModel,
     system: SYSTEM_PROMPT,
     prompt,
-    output: { format: 'json' },
+    config: {
+      maxOutputTokens: 3000,
+      temperature: 0.1,
+    }
   });
 
   let parsedContent;
   try {
-    parsedContent = JSON.parse(responseText);
-  } catch {
+    const withoutThoughts = responseText.replace(/<think>[\s\S]*?(<\/think>|$)/ig, '');
+    const jsonMatch = withoutThoughts.match(/[\{\[][\s\S]*[\}\]]/);
+    
+    if (!jsonMatch) {
+      throw new Error("No JSON object found in response");
+    }
+
+    parsedContent = JSON.parse(jsonMatch[0]);
+  } catch (error) {
+    console.error("Failed to parse explanation JSON:", error);
+    // ADD THIS DEBUG LOG
+    console.error("RAW OUTPUT WAS:\n", responseText); 
+    
     parsedContent = {
       explanation: 'Signal lost. The Professor is recalculating.',
       remediationSuggestions: 'Adjust the plan: lock down the perimeter manually and review the intercepted payload.'

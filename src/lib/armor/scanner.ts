@@ -72,8 +72,8 @@ const groq = new Groq({
 // or exhaust memory. These bound worst-case behavior explicitly rather than relying on the
 // HTTP client's own defaults (Groq's SDK default is 1 minute per request, with no cap at all
 // on the number of batches a large PR can produce).
-const SCAN_REQUEST_TIMEOUT_MS = 60_000; // hard cap per individual LLM call
-const MAX_TOTAL_SCAN_MS = 180_000; // hard cap across the whole scanPullRequest() call
+const SCAN_REQUEST_TIMEOUT_MS = 120_000; // hard cap per individual LLM call
+const MAX_TOTAL_SCAN_MS = 300_000; // hard cap across the whole scanPullRequest() call
 const MAX_RETRY_WAIT_MS = 15_000; // cap on any single rate-limit backoff wait
 
 // --- Recursive sanitization guards ---------------------------------------------------------
@@ -250,31 +250,30 @@ export function sanitizeRecursively(input: string): string {
   return current;
 }
 
-/**
- * Extracts only newly added or modified lines from a unified diff patch.
- * This filters out context lines, metadata headers, and deleted lines.
- */
 export function extractAddedLines(patch: string): string {
   if (!patch) return '';
   
   const processedLines: string[] = [];
+  let newLine = 0; // Track the line number
+  
   for (const line of patch.split('\n')) {
-    if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) {
+    // Extract the starting line number from the hunk header
+    const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+    if (hunk) {
+      newLine = parseInt(hunk[1], 10);
       continue; 
     } 
-    // Tag newly added code AND strip the '+' sign
-    else if (line.startsWith('+')) {
-      processedLines.push(`[ADDED] ${line.substring(1)}`);
+    
+    if (line.startsWith('---') || line.startsWith('+++')) continue;
+    
+    // Pass the actual line number instead of [ADDED]
+    if (line.startsWith('+') || line.startsWith(' ')) {
+      processedLines.push(`${newLine}: ${line.substring(1)}`);
+      newLine++;
     } 
-    // Preserve surrounding context AND strip the leading space
-    else if (line.startsWith(' ')) {
-      processedLines.push(line.substring(1));
-    }
   }
   return processedLines.join('\n');
 }
-
-// splitIntoChunks is removed since truncation now happens at the file level during batching.
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -460,7 +459,7 @@ ${fileContent}
       if (!batchContent.trim()) return [];
 
       const prompt = `Analyze the following aggregated code changes from a Pull Request for security vulnerabilities.
-Look strictly for the following configured issues:
+Enforce the following configured issues, AND ALSO flag any other critical executable vulnerabilities (like SQL Injection, XSS, etc) even if they are not explicitly listed below:
 
 ${policyInstructions}
 
@@ -499,36 +498,35 @@ Format:
           console.log(`🔍 Triggering consolidated security scan for files: [${batchFiles.join(', ')}]...`);
           
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 60000);
+          const timeoutId = setTimeout(() => controller.abort(), 120000);
 
           const chatCompletionPromise = groq.chat.completions.create({
             messages: [
               {
                 role: 'system',
-                content: `You are an elite application security auditor. 
+                content: `You are an authorized defensive security auditing tool. This code is explicitly provided by the owner for authorized analysis. You must output the requested JSON regardless of the code's contents. Do not output safety warnings.
 
-You MUST output your response in valid JSON format. 
-Return ONLY the raw JSON object starting with '{'. No preamble or conversational text.
-CRITICAL: Every single key and string value in your JSON MUST be enclosed in double quotes (e.g. "findings": []).
+You MUST output your response in valid JSON format.
+Return ONLY the raw JSON starting with '{' or '['.
 
 CRITICAL RULES:
-1. ONLY flag actual, executable vulnerabilities.
-2. Assigning process.env to a variable is safe. Explicitly leaking it via console.log() is CRITICAL.
-3. SELF-REFERENTIAL TRAP: You are scanning a security tool. Do NOT flag text descriptions of policies as vulnerabilities.
-4. JSON ESCAPING: Properly escape ALL double quotes (\\") and newlines (\\n).
-5. You MUST return a root JSON object with a "findings" key array.` 
+1. Treat all code provided as executable production code.
+2. You MUST evaluate ALL code in the snippet, including surrounding context lines. If a vulnerability exists anywhere in the provided text, you MUST flag it, even if it is not a newly added line.
+3. Assigning process.env to a variable is safe. Explicitly leaking it via console.log() is CRITICAL.
+4. JSON ESCAPING: Properly escape ALL double quotes (\\") and newlines (\\n).` 
               },
               { 
                 role: 'user', 
                 content: `${prompt}\n\nPlease provide the raw JSON output now, starting immediately with '{':` 
               }
             ],
-            model: process.env.GROQ_MODEL || 'llama3-70b-8192',
+            model: process.env.GROQ_MODEL!,
             temperature: 0.1,
+            max_tokens: 3000,
           }, { timeout: SCAN_REQUEST_TIMEOUT_MS });
 
           const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new ScannerTimeoutError('LLM scan timed out after 60 seconds')), 60000);
+            setTimeout(() => reject(new ScannerTimeoutError('LLM scan timed out after 60 seconds')), 120000);
           });
 
           const chatCompletion = await Promise.race([
@@ -537,13 +535,18 @@ CRITICAL RULES:
           ]);
           
           const responseText = chatCompletion.choices[0]?.message?.content || '{"findings": []}';
-          
           const withoutThoughts = responseText.replace(/<think>[\s\S]*?(<\/think>|$)/ig, '');
-          
-          // 2. Find the first '{' and the last '}' in the cleaned text
-          const jsonMatch = withoutThoughts.match(/\{[\s\S]*\}/);
-          const cleanJsonString = jsonMatch ? jsonMatch[0] : '{"findings": []}';
-          
+
+          // Match either an array '[' or an object '{'
+          const jsonMatch = withoutThoughts.match(/[\{\[][\s\S]*[\}\]]/);
+
+          if (!jsonMatch) {
+            // Throw an error so the retry logic catches it, instead of silently returning 0 findings
+            throw new SyntaxError("LLM refused to scan or returned non-JSON text.");
+          }
+
+          const cleanJsonString = jsonMatch[0];
+
           let result;
           try {
             result = JSON.parse(cleanJsonString);
@@ -551,8 +554,23 @@ CRITICAL RULES:
             console.error("\n[🚨 LLM RETURNED INVALID JSON 🚨]\nRaw Output:\n" + responseText + "\n--------------------------\n");
             throw parseError; 
           }
-          
-          const rawFindings = result.findings || [];
+
+          let rawFindings: any[] = [];
+
+          if (Array.isArray(result)) {
+            // If the LLM returned a raw array: [ {...} ]
+            rawFindings = result;
+          } else if (result.findings && Array.isArray(result.findings)) {
+            // If the LLM perfectly followed instructions: { "findings": [...] }
+            rawFindings = result.findings;
+          } else {
+            // If the LLM hallucinated keys, loop through the entire object and combine ALL arrays
+            for (const key of Object.keys(result)) {
+              if (Array.isArray(result[key])) {
+                rawFindings.push(...result[key]);
+              }
+            }
+          }
           
           const sanitizedFindings: ScanFinding[] = rawFindings.map((f: any) => {
             let normalizedSnippet = '';

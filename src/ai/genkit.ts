@@ -66,4 +66,4 @@ export const ai = genkit({
 });
 
 /** Model reference flows should use unless they need to override it explicitly. */
-export const defaultModel = `${GROQ_MODEL}`;
+export const defaultModel = `groq/${GROQ_MODEL}`;
