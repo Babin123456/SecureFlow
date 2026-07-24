@@ -11,6 +11,10 @@ if (process.env.REDIS_URL && process.env.REDIS_URL.trim() !== '') {
   redisInstance =
     globalForRedis.redis ??
     new Redis(process.env.REDIS_URL, {
+      retryStrategy(times) {
+        const delay = Math.min(times * 50, 2000);
+        return delay; // Reconnect after a slight delay
+      },
       maxRetriesPerRequest: 3,
     });
     
