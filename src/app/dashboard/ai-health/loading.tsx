@@ -3,7 +3,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function AiHealthLoading() {
   return (
-    <div className="space-y-8 animate-in fade-in duration-500" data-testid="ai-health-loading">
+    <div
+      className="space-y-8 animate-in fade-in duration-500"
+      data-testid="ai-health-loading"
+      aria-busy="true"
+      aria-label="Loading AI health status"
+    >
       {/* Header section skeleton */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

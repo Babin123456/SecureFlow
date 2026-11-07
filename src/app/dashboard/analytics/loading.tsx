@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function AnalyticsLoading() {
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div
+      className="space-y-8 animate-in fade-in duration-500"
+      aria-busy="true"
+      aria-label="Loading analytics overview"
+    >
       <div>
         <Skeleton className="h-4 w-40 mb-2" />
         <Skeleton className="h-10 w-64 mb-2" />
